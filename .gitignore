@@ -3,18 +3,23 @@
 *.orig
 *.bak
 .vscode/
-**/build/
 **/GNU ARM v*
 **/.projectlinkstore
 **/.settings
 **/.makefile
 **/.trash
 **/.uceditor
-**/autogen/*.crc
+**/autogen/**/*.crc
 **/__pycache__
 **/GNU ARM v*
 **/IAR ARM*
 **/sonar-bw/
+**/.DS_Store
+**/.clangd
+**/compile_commands.json
+projects/*/build/
+projects/*/cmake_*/build/
+**/.cursor
 
 ##Enable these if you are not tracking Simplicity studio project
 # **/.cproject
