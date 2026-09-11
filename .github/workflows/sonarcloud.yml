@@ -11,8 +11,8 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: sonarcloud-${{ github.event.workflow_run.id }}
-  cancel-in-progress: false
+  group: sonarcloud-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
 
 env:
   SISDK_VERSION: 2025.12.0
@@ -61,7 +61,13 @@ jobs:
             fi
 
             pr_json=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$pr_number")
-            analysis_revision=$(jq -r '.head.sha' <<< "$pr_json")
+            current_pr_revision=$(jq -r '.head.sha' <<< "$pr_json")
+            if [[ "$current_pr_revision" != "$TRIGGER_HEAD_SHA" ]]; then
+              echo "Build run $TRIGGER_RUN_ID is stale; the pull request head has changed."
+              exit 1
+            fi
+
+            analysis_revision=$TRIGGER_HEAD_SHA
             analysis_branch=$(jq -r '.head.ref' <<< "$pr_json")
             analysis_base=$(jq -r '.base.ref' <<< "$pr_json")
             checkout_ref="refs/pull/$pr_number/merge"
