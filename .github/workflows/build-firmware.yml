@@ -1,0 +1,126 @@
+name: Build firmware
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+      - "release/**"
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-firmware-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SISDK_VERSION: 2025.12.0
+  AIML_VERSION: 2.2.1
+  BUILD_OUTPUT_DIR: ${{ github.workspace }}/build-output
+  BUILD_WRAPPER_OUTPUT_DIR: ${{ github.workspace }}/sonar-bw
+
+jobs:
+  build:
+    name: Generate and build firmware
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: corretto
+          java-version: 21
+
+      - name: Set up Silicon Labs Tool
+        uses: SiliconLabsSoftware/action-setup-slt@14333efe84887ae976acf1946feae2d180e4e7d9
+        with:
+          install-conan: true
+          use-unstable: false
+
+      - name: Install SDK and build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          slt install \
+            "simplicity-sdk/${SISDK_VERSION}@silabs" \
+            "aiml/${AIML_VERSION}@silabs" \
+            slc-cli \
+            cmake \
+            ninja \
+            gcc-arm-none-eabi/12.2.rel1
+
+          sisdk_dir=$(slt where "simplicity-sdk/${SISDK_VERSION}")
+          aiml_dir=$(slt where "aiml/${AIML_VERSION}")
+          slc_dir=$(slt where slc-cli)
+          cmake_dir=$(slt where cmake)
+          ninja_dir=$(slt where ninja)
+          arm_gcc_dir=$(slt where gcc-arm-none-eabi)
+
+          {
+            echo "SISDK_DIR=$sisdk_dir"
+            echo "AIML_DIR=$aiml_dir"
+            echo "ARM_GCC_DIR=$arm_gcc_dir"
+          } >> "$GITHUB_ENV"
+
+          printf '%s\n' \
+            "$slc_dir" \
+            "$cmake_dir/bin" \
+            "$ninja_dir" \
+            "$arm_gcc_dir/bin" >> "$GITHUB_PATH"
+
+      - name: Configure SLC
+        shell: bash
+        run: |
+          set -euo pipefail
+          slc signature trust --sdk="$SISDK_DIR"
+          slc configuration --sdk="$SISDK_DIR" --gcc-toolchain="$ARM_GCC_DIR"
+
+      - name: Install Sonar Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+
+      - name: Generate and build firmware with Build Wrapper
+        shell: bash
+        run: |
+          build-wrapper-linux-x86-64 \
+            --out-dir "$BUILD_WRAPPER_OUTPUT_DIR" \
+            .github/scripts/build_firmware.sh
+
+      - name: Verify compilation database
+        shell: bash
+        run: |
+          set -euo pipefail
+          compilation_database="$BUILD_WRAPPER_OUTPUT_DIR/compile_commands.json"
+          test -s "$compilation_database"
+
+          command_count=$(jq length "$compilation_database")
+          if [[ "$command_count" -eq 0 ]]; then
+            echo "Build Wrapper did not capture any compiler commands."
+            exit 1
+          fi
+
+          echo "Build Wrapper captured $command_count compiler commands."
+
+      - name: Upload firmware and compilation database
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: firmware-build-${{ github.run_id }}
+          path: |
+            build-output/**/*.s37
+            sonar-bw/**
+          if-no-files-found: error
+          retention-days: 7
