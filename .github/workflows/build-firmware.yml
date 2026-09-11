@@ -62,6 +62,7 @@ jobs:
             slc-cli \
             cmake \
             ninja \
+            commander \
             gcc-arm-none-eabi/12.2.rel1
 
           sisdk_dir=$(slt where "simplicity-sdk/${SISDK_VERSION}")
@@ -69,18 +70,28 @@ jobs:
           slc_dir=$(slt where slc-cli)
           cmake_dir=$(slt where cmake)
           ninja_dir=$(slt where ninja)
+          commander_dir=$(slt where commander)
           arm_gcc_dir=$(slt where gcc-arm-none-eabi)
+
+          commander_exe=$(find "$commander_dir" -maxdepth 2 -type f -name commander -perm -111 -print -quit)
+          if [[ -z "$commander_exe" ]]; then
+            echo "Could not locate the Commander executable in $commander_dir."
+            exit 1
+          fi
 
           {
             echo "SISDK_DIR=$sisdk_dir"
             echo "AIML_DIR=$aiml_dir"
             echo "ARM_GCC_DIR=$arm_gcc_dir"
+            echo "POST_BUILD_EXE=$commander_exe"
           } >> "$GITHUB_ENV"
 
           printf '%s\n' \
             "$slc_dir" \
             "$cmake_dir/bin" \
             "$ninja_dir" \
+            "$commander_dir" \
+            "$commander_dir/bin" \
             "$arm_gcc_dir/bin" >> "$GITHUB_PATH"
 
       - name: Configure SLC
