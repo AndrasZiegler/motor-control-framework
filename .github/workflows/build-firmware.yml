@@ -22,7 +22,7 @@ concurrency:
 
 env:
   SISDK_VERSION: 2025.12.0
-  AIML_VERSION: 2.2.1
+  AIML_VERSION: 2.2.0
   BUILD_OUTPUT_DIR: ${{ github.workspace }}/build-output
   BUILD_WRAPPER_OUTPUT_DIR: ${{ github.workspace }}/sonar-bw
 
