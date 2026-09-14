@@ -17,6 +17,8 @@ concurrency:
 env:
   SISDK_VERSION: 2025.12.0
   AIML_VERSION: 2.2.0
+  SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || 'SiliconLabsSoftware_motor-control-framework' }}
+  SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || 'siliconlabssoftware' }}
 
 jobs:
   scan:
@@ -203,6 +205,9 @@ jobs:
       - name: Run SonarCloud analysis
         uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         with:
-          args: -Dproject.settings=${{ runner.temp }}/sonar-analysis.properties
+          args: >-
+            -Dproject.settings=${{ runner.temp }}/sonar-analysis.properties
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
