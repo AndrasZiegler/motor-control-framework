@@ -22,7 +22,8 @@ jobs:
   scan:
     name: Analyze project-owned source
     if: >-
-      github.repository == 'SiliconLabsSoftware/motor-control-framework' &&
+      (github.repository == 'SiliconLabsSoftware/motor-control-framework' ||
+       github.repository == 'AndrasZiegler/motor-control-framework') &&
       github.event.workflow_run.conclusion == 'success' &&
       (github.event.workflow_run.event == 'push' ||
        github.event.workflow_run.event == 'pull_request' ||
