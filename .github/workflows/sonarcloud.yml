@@ -84,7 +84,7 @@ jobs:
             analysis_revision=$TRIGGER_HEAD_SHA
             analysis_branch=$(jq -r '.head.ref' <<< "$pr_json")
             analysis_base=$(jq -r '.base.ref' <<< "$pr_json")
-            checkout_ref="refs/pull/$pr_number/merge"
+            checkout_ref=$TRIGGER_HEAD_SHA
             analysis_type=pull_request
           else
             pr_number=
